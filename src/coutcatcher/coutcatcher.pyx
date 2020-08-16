@@ -43,12 +43,18 @@ IF UNAME_SYSNAME == "Windows":
 
             return _open_osfhandle((intptr_t)tFile, _O_APPEND | _O_TEXT);
         }
-
-        int replace_stdout(int temp_fileno)
+        
+        FILE* get_stdstream(int stream_id)
         {
-            fflush(stdout);
+            return (stream_id == 1) ? stdout : stderr;
+        }
+
+        int replace_stream(int temp_fileno, int stream_id)
+        {
+            FILE *stdstream = get_stdstream(stream_id);
+            fflush(stdstream);
             int old;
-            int cstdout = _fileno(stdout);
+            int cstdout = _fileno(stdstream);
 
             old = _dup(cstdout);   // "old" now refers to "stdout"
             if (old == -1)
@@ -62,12 +68,13 @@ IF UNAME_SYSNAME == "Windows":
             return old;
         }
 
-        int restore_stdout(int old_stdout){
-            fflush(stdout);
+        int restore_stream(int old_stdstream, int stream_id){
+            FILE *stdstream = get_stdstream(stream_id);
+            fflush(stdstream);
 
-            // Restore original stdout
-            int cstdout = _fileno(stdout);
-            return _dup2(old_stdout, cstdout);
+            // Restore original standard stream
+            int cstdstream = _fileno(stdstream);
+            return _dup2(old_stdstream, cstdstream);
         }
         
         
@@ -76,12 +83,12 @@ IF UNAME_SYSNAME == "Windows":
         }
         """
         int open_temp_file()
-        int replace_stdout(int temp_fileno)
-        int restore_stdout(int old_stdout)
+        int replace_stream(int temp_fileno, int stream_id)
+        int restore_stream(int old_stdstream, int stream_id)
         void rewind_fd(int fd)
 ELSE:
     cdef extern from *:
-        """
+        r"""
         #include <stdio.h>
 
 
@@ -92,10 +99,16 @@ ELSE:
             return newfd;
         }
 
-        int replace_stdout(int temp_fileno) {
-            fflush(stdout);
+        FILE* get_stdstream(int stream_id)
+        {
+            return (stream_id == 1) ? stdout : stderr;
+        }
+
+        int replace_stream(int temp_fileno, int stream_id) {
+            FILE *stdstream = get_stdstream(stream_id);
+            fflush(stdstream);
             int old;
-            int cstdout = fileno(stdout);
+            int cstdout = fileno(stdstream);
 
             old = dup(cstdout);   // "old" now refers to "stdout"
             if (old == -1)
@@ -109,12 +122,13 @@ ELSE:
             return old;
         }
 
-        int restore_stdout(int old_stdout) {
-            fflush(stdout);
+        int restore_stream(int old_stdstream, int stream_id) {
+            FILE *stdstream = get_stdstream(stream_id);
+            fflush(stdstream);
 
-            // Restore original stdout
-            int cstdout = fileno(stdout);
-            return dup2(old_stdout, cstdout);
+            // Restore original standard stream
+            int cstdstream = fileno(stdstream);
+            return dup2(old_stdstream, cstdstream);
         }
         
         
@@ -123,16 +137,15 @@ ELSE:
         }
         """
         int open_temp_file()
-        int replace_stdout(int temp_fileno)
-        int restore_stdout(int old_stdout)
+        int replace_stream(int temp_fileno, int stream_id)
+        int restore_stream(int old_stdstream, int stream_id)
         void rewind_fd(int fd)
-
-
 
 import io
 import os
 
 cdef class CoutCatcher():
+    cdef int stream_id
     cdef int temp_file_fd
     cdef int old_fd
 
@@ -140,17 +153,21 @@ cdef class CoutCatcher():
         self.temp_file_fd = -1
         self.old_fd = -1        
 
-    def __cinit__(self):
+    def __cinit__(self, STREAM="stdout"):
+        self.stream_id = 2 if STREAM=="stderr" else 1
         self.init_members()
 
     def start(self): #start capturing
         if self.old_fd == -1:
             self.temp_file_fd = open_temp_file()
-            self.old_fd = replace_stdout(self.temp_file_fd)
+            self.old_fd = replace_stream(self.temp_file_fd, self.stream_id)
+            if self.old_fd<0:
+               raise IOError("could not replace stream")
     
     def stop(self): # stops capturing, returns TextIOWrapper
         if self.old_fd != -1:
-            restore_stdout(self.old_fd)
+            if restore_stream(self.old_fd, self.stream_id)<0:
+                raise ValueError("could not restore stream")
             rewind_fd(self.temp_file_fd) # need to read from the beginning
             buffer = io.TextIOWrapper(os.fdopen(self.temp_file_fd, 'rb'))
             self.init_members()
@@ -163,3 +180,13 @@ cdef class CoutCatcher():
             with buf:
                 return buf.read()
         return None
+
+
+# for testing purposes
+from libc.stdio cimport printf, fprintf, stderr
+
+def print_to_cstdout(const char* s):
+    printf("%s", s)
+    
+def print_to_cstderr(const char* s):
+    fprintf(stderr, "%s", s)
