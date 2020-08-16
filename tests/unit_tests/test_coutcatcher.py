@@ -1,3 +1,4 @@
+import sys
 import unittest
 
 from coutcatcher.coutcatcher import CoutCatcher, print_to_cstdout, print_to_cstderr
@@ -47,6 +48,14 @@ class CoutCatcherTester(unittest.TestCase):
       res = catcher.stop_and_read()
       self.assertEqual(res, "bbbbcccc")
 
+   def test_sys_stdout_catched_too(self):
+      catcher = CoutCatcher()
+      catcher.start()
+      sys.__stdout__.write("a")
+      catcher.start()
+      res = catcher.stop_and_read()
+      self.assertEqual(res, "a")
+
 
 
 class CerrCatcherTester(unittest.TestCase): 
@@ -93,3 +102,11 @@ class CerrCatcherTester(unittest.TestCase):
       print_to_cstderr(b"cccc")
       res = catcher.stop_and_read()
       self.assertEqual(res, "bbbbcccc")
+
+   def test_sys_stderr_catched_too(self):
+      catcher = CoutCatcher("stderr")
+      catcher.start()
+      sys.__stderr__.write("a")
+      catcher.start()
+      res = catcher.stop_and_read()
+      self.assertEqual(res, "a")
