@@ -143,6 +143,7 @@ ELSE:
 
 import io
 import os
+import sys
 
 cdef class CoutCatcher():
     cdef int stream_id
@@ -166,6 +167,10 @@ cdef class CoutCatcher():
     
     def stop(self): # stops capturing, returns TextIOWrapper
         if self.old_fd != -1:
+            sys.stdout.flush()    #to be consistent, sometime is unbuffered (no needed) or line buffered (needed)
+            sys.stderr.flush()    #to be consistent
+            sys.__stdout__.flush()#to be consistent
+            sys.__stderr__.flush()#to be consistent
             if restore_stream(self.old_fd, self.stream_id)<0:
                 raise ValueError("could not restore stream")
             rewind_fd(self.temp_file_fd) # need to read from the beginning
