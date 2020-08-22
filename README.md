@@ -1,6 +1,6 @@
 # coutcatcher
 
-Catches things printed to c-stdout/stderr and makes it available to python. Works on Linux,macOS and Windows. 
+Catches things printed to C-level stdout/stderr and makes them available to python. Works on Linux,macOS and Windows. 
 
 ## Installation:
 
@@ -10,15 +10,15 @@ To install via `pip`, run:
 
 It is possible to uninstall it afterwards via
 
-   pip uninstall coutcatcher
+    pip uninstall coutcatcher
 
 You can also install using the `setup.py` file from the root directory of the project:
 
-   python setup.py install
+    python setup.py install
 
 or 
 
-   pip install .
+    pip install .
 
 For installation, a C-compiler is needed.
 
@@ -54,7 +54,7 @@ Use following magic-command to redirect the output to notebook:
 
 to switch it off again:
 
-   %unload_ext coutcatcher
+    %unload_ext coutcatcher
 
 ## Testing for development:
 
@@ -90,5 +90,5 @@ Inspired by:
 
 #### Release 1.0.1 (??.??.2020):
   
-  * ToDo
+  * introducing `capture` and `%load_ext coutcatcher` functionality to redirect C-level stdout/stderr.
     
