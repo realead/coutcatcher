@@ -88,7 +88,7 @@ Inspired by:
 
 ## History
 
-#### Release 1.0.1 (??.??.2020):
+#### Release 0.1.0 (21.08.2020):
   
   * introducing `capture` and `%load_ext coutcatcher` functionality to redirect C-level stdout/stderr.
     
